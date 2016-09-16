@@ -15,6 +15,13 @@ static void lept_parse_whitespace(lept_context* c) {
     c->json = p;
 }
 
+static int lept_parse_root(lept_context* c, int ToReturn) {
+    const char *p=c->json;
+    if (ToReturn == LEPT_PARSE_OK && *p != '\0')
+        ToReturn = LEPT_PARSE_ROOT_NOT_SINGULAR;
+    return ToReturn;
+}
+
 static int lept_parse_null(lept_context* c, lept_value* v) {
     EXPECT(c, 'n');
     if (c->json[0] != 'u' || c->json[1] != 'l' || c->json[2] != 'l')
@@ -24,21 +31,43 @@ static int lept_parse_null(lept_context* c, lept_value* v) {
     return 0;
 }
 
+static int lept_parse_true(lept_context* c,lept_value* v){
+    EXPECT(c, 't');
+    if (c->json[0] != 'r' || c->json[1] != 'u' || c->json[2] !='e')
+        return LEPT_PARSE_INVALID_VALUE;
+    c->json +=3;
+    v->type = LEPT_NULL;
+    return 0;
+}
+
+static int lept_parse_false(lept_context* c,lept_value* v){
+    EXPECT(c, 'f');
+    if (c->json[0] != 'a' || c->json[1] != 'l' || c->json [2] != 's' ||c->json[3] != 'e')
+        return LEPT_PARSE_INVALID_VALUE;
+    c->json +=4;
+    v->type = LEPT_NULL;
+    return 0;
+}
+
 static int lept_parse_value(lept_context* c, lept_value* v) {
     switch (*c->json) {
         case 'n':  return lept_parse_null(c, v);
         case '\0': return LEPT_PARSE_EXPECT_VALUE;
+        case 't':  return lept_parse_true(c, v);
+        case 'f':  return lept_parse_false(c, v);
         default:   return LEPT_PARSE_INVALID_VALUE;
     }
 }
 
 int lept_parse(lept_value* v, const char* json) {
-    lept_context c;
+    lept_context c; int ToReturn = 0;
     assert(v != NULL);
     c.json = json;
     v->type = LEPT_NULL;
     lept_parse_whitespace(&c);
-    return lept_parse_value(&c, v);
+    ToReturn = lept_parse_value(&c, v);
+    lept_parse_whitespace(&c);
+    return lept_parse_root(&c, ToReturn);
 }
 
 lept_type lept_get_type(const lept_value* v) {
